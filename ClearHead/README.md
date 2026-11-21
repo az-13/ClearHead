@@ -17,9 +17,7 @@ Every study session starts with good intentions and gets pulled away by the phon
 - All data stays on device (UserDefaults) — no account, no internet
 
 ## Requirements
-
-- iOS 16.0 or later
-- iPhone
+- iPhone with iOS 16.0 or later
 
 ## Project structure
 
