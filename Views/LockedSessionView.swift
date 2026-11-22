@@ -43,7 +43,9 @@ struct LockedSessionView: View {
                     phase = .checkIn
                 }
             } else if phase == .active, #available(iOS 16.2, *) {
-                LiveActivityManager.update(remainingSeconds: Int(remaining), name: session.name)
+                Task {
+                    await LiveActivityManager.update(remainingSeconds: Int(remaining), name: session.name)
+                }
             }
         }
         .alert("Leave this session early?", isPresented: $showEmergencyAlert) {
