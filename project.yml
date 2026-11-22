@@ -2,7 +2,8 @@ name: ClearHead
 options:
   bundleIdPrefix: com.az13
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "16.2"
+  generateEmptyDirectories: true
 
 targets:
   ClearHead:
@@ -16,10 +17,10 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: ClearHead
-        NSSupportsLiveActivities: true
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        NSSupportsLiveActivities: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.az13.clearhead
