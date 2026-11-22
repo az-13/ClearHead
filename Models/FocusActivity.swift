@@ -13,71 +13,61 @@ struct FocusActivityAttributes: ActivityAttributes {
     public var totalSeconds: Int
 }
 
-// MARK: - Dynamic Island & Lock Screen Views
+// MARK: - Dynamic Island & Lock Screen View
 @available(iOS 16.2, *)
-extension FocusActivityAttributes {
-    
-    struct DynamicIsland: Widget {
-        var body: some WidgetConfiguration {
-            ActivityConfiguration(for: FocusActivityAttributes.self) { context in
-                // Lock Screen banner view
-                VStack(spacing: 8) {
-                    HStack {
-                        Image(systemName: "timer")
-                            .foregroundColor(.indigo)
-                        Text(context.attributes.sessionName)
-                            .font(.headline)
-                        Spacer()
-                    }
-                    HStack {
-                        Text(timeString(from: context.state.remainingSeconds))
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                        Spacer()
-                    }
+struct FocusActivityWidget: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: FocusActivityAttributes.self) { context in
+            // Lock Screen banner
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "timer")
+                        .foregroundColor(.indigo)
+                    Text(context.attributes.sessionName)
+                        .font(.headline)
+                    Spacer()
                 }
-                .padding()
-                .background(.indigo.opacity(0.1).gradient)
-            } dynamicIsland: { context in
-                DynamicIsland {
-                    // Expanded Dynamic Island — left side
-                    DynamicIslandLeading {
-                        Image(systemName: "timer")
-                            .foregroundColor(.white)
-                    }
-                    // Expanded Dynamic Island — right side
-                    DynamicIslandTrailing {
-                        Text(timeString(from: context.state.remainingSeconds))
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundColor(.white)
-                    }
-                } compactLeading: {
-                    // Compact (small) Dynamic Island — left
+                HStack {
+                    Text(timeString(from: context.state.remainingSeconds))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    Spacer()
+                }
+            }
+            .padding()
+            .background(.indigo.opacity(0.1).gradient)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
                     Image(systemName: "timer")
                         .foregroundColor(.white)
-                } compactTrailing: {
-                    // Compact (small) Dynamic Island — right
-                    Text(timeStringShort(from: context.state.remainingSeconds))
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(timeString(from: context.state.remainingSeconds))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundColor(.white)
-                } minimal: {
-                    // Minimal (even smaller) view
-                    Image(systemName: "timer")
-                        .foregroundColor(.white)
                 }
+            } compactLeading: {
+                Image(systemName: "timer")
+                    .foregroundColor(.white)
+            } compactTrailing: {
+                Text(timeStringShort(from: context.state.remainingSeconds))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(.white)
+            } minimal: {
+                Image(systemName: "timer")
+                    .foregroundColor(.white)
             }
         }
     }
     
-    // Helper: Format MM:SS
     private static func timeString(from seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60
         return String(format: "%02d:%02d", m, s)
     }
     
-    // Helper: Short format for compact island (e.g. "5m" or "30s")
     private static func timeStringShort(from seconds: Int) -> String {
         if seconds >= 60 {
             return "\(seconds / 60)m"
@@ -87,11 +77,12 @@ extension FocusActivityAttributes {
     }
 }
 
+// MARK: - Live Activity Manager
 @available(iOS 16.2, *)
 enum LiveActivityManager {
     private static var activity: Activity<FocusActivityAttributes>?
 
-    static func start(name: String, totalSeconds: Int) {
+    static func start(name: String, totalSeconds: Int) async {
         let attributes = FocusActivityAttributes(
             sessionName: name,
             totalSeconds: totalSeconds
@@ -102,31 +93,27 @@ enum LiveActivityManager {
         )
 
         do {
-            activity = try Activity.request(
+            activity = try await Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: state, staleDate: Date().addingTimeInterval(30))
+                content: .init(state: state, staleDate: Date().addingTimeInterval(30))
             )
             print("✅ ClearHead: Live Activity started — \(name), \(totalSeconds)s")
         } catch {
-            print("❌ ClearHead: Failed to start Live Activity: \(error.localizedDescription)")
+            print("❌ ClearHead: Failed to start: \(error.localizedDescription)")
         }
     }
 
-    static func update(remainingSeconds: Int, name: String) {
+    static func update(remainingSeconds: Int, name: String) async {
         guard let activity = activity else { return }
         let state = FocusActivityAttributes.ContentState(
             remainingSeconds: remainingSeconds,
             sessionName: name
         )
-        Task {
-            await activity.update(using: state)
-        }
+        await activity.update(.init(state: state, staleDate: Date().addingTimeInterval(5)))
     }
 
-    static func stop() {
-        Task {
-            await activity?.end(dismissalPolicy: .immediate)
-        }
+    static func stop() async {
+        await activity?.end(dismissalPolicy: .immediate)
         activity = nil
     }
 }
