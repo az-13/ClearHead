@@ -20,7 +20,9 @@ final class SessionStore: ObservableObject {
         session.start()
         activeSession = session
         if #available(iOS 16.2, *) {
-            LiveActivityManager.start(name: name, totalSeconds: Int(duration))
+            Task {
+                await LiveActivityManager.start(name: name, totalSeconds: Int(duration))
+            }
         }
     }
 
@@ -30,7 +32,9 @@ final class SessionStore: ObservableObject {
         sessions.insert(active, at: 0)
         activeSession = nil
         if #available(iOS 16.2, *) {
-            LiveActivityManager.stop()
+            Task {
+                await LiveActivityManager.stop()
+            }
         }
         save()
     }
@@ -41,7 +45,9 @@ final class SessionStore: ObservableObject {
         sessions.insert(active, at: 0)
         activeSession = nil
         if #available(iOS 16.2, *) {
-            LiveActivityManager.stop()
+            Task {
+                await LiveActivityManager.stop()
+            }
         }
         save()
     }
