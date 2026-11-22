@@ -2,6 +2,7 @@ import Foundation
 import ActivityKit
 import SwiftUI
 
+// MARK: - Live Activity Attributes
 @available(iOS 16.2, *)
 struct FocusActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
@@ -13,71 +14,7 @@ struct FocusActivityAttributes: ActivityAttributes {
     public var totalSeconds: Int
 }
 
-// MARK: - Dynamic Island & Lock Screen View
-@available(iOS 16.2, *)
-struct FocusActivityWidget: Widget {
-    var body: some WidgetConfiguration {
-        ActivityConfiguration(for: FocusActivityAttributes.self) { context in
-            // Lock Screen banner
-            VStack(spacing: 8) {
-                HStack {
-                    Image(systemName: "timer")
-                        .foregroundColor(.indigo)
-                    Text(context.attributes.sessionName)
-                        .font(.headline)
-                    Spacer()
-                }
-                HStack {
-                    Text(timeString(from: context.state.remainingSeconds))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Spacer()
-                }
-            }
-            .padding()
-            .background(.indigo.opacity(0.1).gradient)
-        } dynamicIsland: { context in
-            DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: "timer")
-                        .foregroundColor(.white)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    Text(timeString(from: context.state.remainingSeconds))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundColor(.white)
-                }
-            } compactLeading: {
-                Image(systemName: "timer")
-                    .foregroundColor(.white)
-            } compactTrailing: {
-                Text(timeStringShort(from: context.state.remainingSeconds))
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundColor(.white)
-            } minimal: {
-                Image(systemName: "timer")
-                    .foregroundColor(.white)
-            }
-        }
-    }
-    
-    private static func timeString(from seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
-        return String(format: "%02d:%02d", m, s)
-    }
-    
-    private static func timeStringShort(from seconds: Int) -> String {
-        if seconds >= 60 {
-            return "\(seconds / 60)m"
-        } else {
-            return "\(seconds)s"
-        }
-    }
-}
-
-// MARK: - Live Activity Manager
+// MARK: - Live Activity Manager (this stays in your main app)
 @available(iOS 16.2, *)
 enum LiveActivityManager {
     private static var activity: Activity<FocusActivityAttributes>?
@@ -113,7 +50,33 @@ enum LiveActivityManager {
     }
 
     static func stop() async {
-        await activity?.end(dismissalPolicy: .immediate)
+        if let activity = activity {
+            await activity.end(
+                using: FocusActivityAttributes.ContentState(
+                    remainingSeconds: 0,
+                    sessionName: ""
+                ),
+                dismissalPolicy: .immediate
+            )
+        }
         activity = nil
+    }
+}
+
+// MARK: - Helper functions (used by both app and widget)
+@available(iOS 16.2, *)
+struct FocusActivityHelpers {
+    static func timeString(from seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%02d:%02d", m, s)
+    }
+    
+    static func timeStringShort(from seconds: Int) -> String {
+        if seconds >= 60 {
+            return "\(seconds / 60)m"
+        } else {
+            return "\(seconds)s"
+        }
     }
 }
